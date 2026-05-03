@@ -330,6 +330,55 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 .archive-streak { font-family: var(--serif); font-size: 20px; color: var(--text-3); }
 .archive-empty { text-align: center; padding: 48px 24px; color: var(--text-3); font-size: 14px; line-height: 1.7; }
 
+/* ── SETTINGS ── */
+.settings-header { margin-bottom: 24px; }
+.settings-title { font-family: var(--serif); font-size: 30px; color: var(--text); }
+.settings-note { font-size: 13px; color: var(--text-3); line-height: 1.6; margin-bottom: 20px; }
+
+.habit-edit-list { display: flex; flex-direction: column; gap: 0; }
+.habit-edit-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.habit-edit-item:last-child { border-bottom: none; }
+.habit-edit-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--surface-2); color: var(--text-3);
+  font-size: 11px; font-weight: 600; display: flex;
+  align-items: center; justify-content: center; flex-shrink: 0;
+}
+.habit-edit-input {
+  flex: 1; border: none; outline: none; font-family: var(--sans);
+  font-size: 14px; color: var(--text); background: transparent;
+  caret-color: var(--accent); padding: 4px 0;
+}
+.habit-edit-input::placeholder { color: var(--text-3); }
+.habit-edit-input:focus { border-bottom: 1px solid var(--accent); }
+
+.save-habits-btn {
+  width: 100%; padding: 13px; background: var(--text); color: white;
+  border: none; border-radius: var(--radius-sm); font-family: var(--sans);
+  font-size: 14px; font-weight: 500; cursor: pointer;
+  transition: background 0.2s; margin-top: 20px;
+}
+.save-habits-btn:hover { background: #222; }
+.save-habits-btn:disabled { background: var(--border-2); cursor: not-allowed; }
+
+.settings-account-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.settings-account-label { font-size: 13px; color: var(--text-3); }
+.settings-account-value { font-size: 13px; color: var(--text); font-weight: 500; }
+
+.signout-btn {
+  width: 100%; padding: 13px; background: transparent; color: var(--accent);
+  border: 1px solid var(--accent-mid); border-radius: var(--radius-sm);
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  cursor: pointer; transition: background 0.2s; margin-top: 12px;
+}
+.signout-btn:hover { background: var(--accent-light); }
+
 /* ── MODAL ── */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 200; align-items: flex-end; justify-content: center; }
 .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
@@ -574,6 +623,59 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
       <div id="archive-list"></div>
     </div>
 
+    <!-- SETTINGS -->
+    <div id="view-settings" class="view">
+      <div class="settings-header">
+        <div class="settings-title">Settings.</div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">My Habits</div>
+        </div>
+        <p class="settings-note">These are your 5 daily habits. Tap any one to edit it. Changes save to your account.</p>
+        <div class="habit-edit-list">
+          <div class="habit-edit-item">
+            <div class="habit-edit-num">1</div>
+            <input class="habit-edit-input" id="edit-habit-1" type="text" placeholder="Habit 1">
+          </div>
+          <div class="habit-edit-item">
+            <div class="habit-edit-num">2</div>
+            <input class="habit-edit-input" id="edit-habit-2" type="text" placeholder="Habit 2">
+          </div>
+          <div class="habit-edit-item">
+            <div class="habit-edit-num">3</div>
+            <input class="habit-edit-input" id="edit-habit-3" type="text" placeholder="Habit 3">
+          </div>
+          <div class="habit-edit-item">
+            <div class="habit-edit-num">4</div>
+            <input class="habit-edit-input" id="edit-habit-4" type="text" placeholder="Habit 4">
+          </div>
+          <div class="habit-edit-item">
+            <div class="habit-edit-num">5</div>
+            <input class="habit-edit-input" id="edit-habit-5" type="text" placeholder="Habit 5">
+          </div>
+        </div>
+        <button class="save-habits-btn" id="save-habits-btn" onclick="saveHabits()">Save habits →</button>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">Account</div>
+        </div>
+        <div class="settings-account-row">
+          <div class="settings-account-label">Name</div>
+          <div class="settings-account-value" id="settings-name">—</div>
+        </div>
+        <div class="settings-account-row" style="border-bottom:none">
+          <div class="settings-account-label">Email</div>
+          <div class="settings-account-value" id="settings-email">—</div>
+        </div>
+      </div>
+
+      <button class="signout-btn" onclick="handleSignOut()">Sign out</button>
+    </div>
+
   </div>
 
   <nav class="bottom-nav">
@@ -592,6 +694,10 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
     <button class="nav-item" onclick="switchView('archive')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></svg>
       <span>Archive</span>
+    </button>
+    <button class="nav-item" onclick="switchView('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Settings</span>
     </button>
   </nav>
 </div>
@@ -1050,8 +1156,57 @@ function switchView(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('view-' + view).classList.add('active');
-  const idx = { today: 0, streak: 1, reset: 2, archive: 3 };
+  const idx = { today: 0, streak: 1, reset: 2, archive: 3, settings: 4 };
   document.querySelectorAll('.nav-item')[idx[view]].classList.add('active');
+  if (view === 'settings') renderSettings();
+}
+
+// ── SETTINGS ──────────────────────────────────────
+function renderSettings() {
+  if (userHabits) {
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById('edit-habit-' + i);
+      if (el) el.value = userHabits['habit_' + i] || '';
+    }
+  }
+  if (userProfile) {
+    document.getElementById('settings-name').textContent = userProfile.username || '—';
+  }
+  if (currentUser) {
+    document.getElementById('settings-email').textContent = currentUser.email || '—';
+  }
+}
+
+async function saveHabits() {
+  const btn = document.getElementById('save-habits-btn');
+  btn.disabled = true; btn.textContent = 'Saving...';
+
+  const updates = {
+    habit_1: document.getElementById('edit-habit-1').value.trim(),
+    habit_2: document.getElementById('edit-habit-2').value.trim(),
+    habit_3: document.getElementById('edit-habit-3').value.trim(),
+    habit_4: document.getElementById('edit-habit-4').value.trim(),
+    habit_5: document.getElementById('edit-habit-5').value.trim(),
+  };
+
+  if (Object.values(updates).some(v => !v)) {
+    showToast('All 5 habits must have a name.');
+    btn.disabled = false; btn.textContent = 'Save habits →';
+    return;
+  }
+
+  const { error } = await sb.from('habits').update(updates).eq('user_id', currentUser.id);
+  btn.disabled = false; btn.textContent = 'Save habits →';
+
+  if (error) { showToast('Error saving. Try again.'); return; }
+
+  // Update local state and today's checklist labels
+  userHabits = { ...userHabits, ...updates };
+  for (let i = 1; i <= 5; i++) {
+    const label = document.getElementById('habit-label-' + i);
+    if (label) label.textContent = updates['habit_' + i];
+  }
+  showToast('✓ Habits saved.');
 }
 
 // ── HELPERS ───────────────────────────────────────
