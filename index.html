@@ -769,7 +769,9 @@ async function init() {
 }
 
 async function loadApp() {
-  showScreen('loading');
+  if (!document.getElementById('screen-app').classList.contains('active')) {
+    showScreen('loading');
+  }
   await Promise.all([loadProfile(), loadHabits(), loadTodayLog(), loadArchive()]);
   renderUI();
   showScreen('app');
@@ -1239,13 +1241,11 @@ function showToast(msg) {
 // ── START ─────────────────────────────────────────
 init();
 
-// Re-check session when tab becomes visible again
+// Silently refresh data when tab becomes visible again
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && currentUser) {
-    const currentScreen = document.querySelector('.screen.active');
-    if (currentScreen && currentScreen.id === 'screen-loading') {
-      await loadApp();
-    }
+    await Promise.all([loadProfile(), loadHabits(), loadTodayLog(), loadArchive()]);
+    renderUI();
   }
 });
 
