@@ -740,7 +740,16 @@ const todayStr = today.toISOString().split('T')[0];
 
 // ── INIT ───────────────────────────────────────────
 async function init() {
+  // Timeout failsafe — if loading hangs over 5s, go to auth
+  const timeout = setTimeout(() => {
+    if (document.getElementById('screen-loading').classList.contains('active')) {
+      showScreen('auth');
+    }
+  }, 5000);
+
   const { data: { session } } = await sb.auth.getSession();
+  clearTimeout(timeout);
+
   if (session) {
     currentUser = session.user;
     await loadApp();
@@ -1229,6 +1238,32 @@ function showToast(msg) {
 
 // ── START ─────────────────────────────────────────
 init();
+
+// Re-check session when tab becomes visible again
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible' && currentUser) {
+    const currentScreen = document.querySelector('.screen.active');
+    if (currentScreen && currentScreen.id === 'screen-loading') {
+      await loadApp();
+    }
+  }
+});
+
+// Fix: when user switches back to this tab, check session and recover if stuck
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState === 'visible') {
+    const currentScreen = document.querySelector('.screen.active');
+    if (currentScreen && currentScreen.id === 'screen-loading') {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        await loadApp();
+      } else {
+        showScreen('auth');
+      }
+    }
+  }
+});
 </script>
 </body>
 </html>
