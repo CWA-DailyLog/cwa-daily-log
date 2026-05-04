@@ -607,7 +607,7 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
         </div>
         <div class="stat-card">
           <div class="stat-value" id="stat-month">0%</div>
-          <div class="stat-label">This Month</div>
+          <div class="stat-label">Days This Month</div>
         </div>
         <div class="stat-card">
           <div class="stat-value" id="stat-started">—</div>
@@ -839,6 +839,7 @@ async function loadApp() {
   }
   await Promise.all([loadProfile(), loadHabits(), loadTodayLog(), loadArchive()]);
   renderUI();
+  initNotifications();
   showScreen('app');
 }
 
@@ -1044,11 +1045,10 @@ function renderUI() {
       d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
-  // Monthly %
-  const thisMonth = archiveLogs.filter(l => l.log_date?.startsWith(todayStr.slice(0,7)) && l.showed_up);
-  const daysIntoMonth = today.getDate();
-  const pct = daysIntoMonth > 0 ? Math.round((thisMonth.length / daysIntoMonth) * 100) : 0;
-  document.getElementById('stat-month').textContent = pct + '%';
+  // This month — count of days logged
+  const thisMonthCount = archiveLogs.filter(l => l.log_date?.startsWith(todayStr.slice(0,7)) && l.showed_up).length;
+  document.getElementById('stat-month').textContent = thisMonthCount;
+  document.querySelector('#stat-month + .stat-label') && null; // label already set in HTML
 
   renderCalendar();
   renderArchive();
@@ -1078,12 +1078,22 @@ async function saveToday() {
   if (todayLog) {
     ({ error } = await sb.from('daily_logs').update(logData).eq('id', todayLog.id));
   } else {
+    // Calculate new streak first if showing up
+    let newStreak = userProfile.current_streak || 0;
+    let newBest = userProfile.personal_best || 0;
+    let newTotal = userProfile.total_days_logged || 0;
+
+    if (showUpValue === 'yes') {
+      newStreak = newStreak + 1;
+      newBest = Math.max(newStreak, newBest);
+      newTotal = newTotal + 1;
+    }
+
+    // Save streak_day as the correct incremented value
+    logData.streak_day = showUpValue === 'yes' ? newStreak : 0;
+
     ({ error } = await sb.from('daily_logs').insert(logData));
     if (!error && showUpValue === 'yes') {
-      // Update streak
-      const newStreak = (userProfile.current_streak || 0) + 1;
-      const newBest = Math.max(newStreak, userProfile.personal_best || 0);
-      const newTotal = (userProfile.total_days_logged || 0) + 1;
       await sb.from('profiles').update({
         current_streak: newStreak,
         personal_best: newBest,
@@ -1355,10 +1365,11 @@ function switchView(view) {
 
 // ── SETTINGS ──────────────────────────────────────
 function renderSettings() {
+  // Only populate habit inputs if they're empty — don't overwrite user edits
   if (userHabits) {
     for (let i = 1; i <= 5; i++) {
       const el = document.getElementById('edit-habit-' + i);
-      if (el) el.value = userHabits['habit_' + i] || '';
+      if (el && !el.value) el.value = userHabits['habit_' + i] || '';
     }
   }
   if (userProfile) {
@@ -1367,6 +1378,7 @@ function renderSettings() {
   if (currentUser) {
     document.getElementById('settings-email').textContent = currentUser.email || '—';
   }
+  renderNotifSettings();
 }
 
 async function saveHabits() {
@@ -1387,12 +1399,17 @@ async function saveHabits() {
     return;
   }
 
-  const { error } = await sb.from('habits').update(updates).eq('user_id', currentUser.id);
+  // Use upsert so it works whether the row exists or not
+  const { error } = await sb.from('habits').upsert({
+    user_id: currentUser.id,
+    ...updates
+  }, { onConflict: 'user_id' });
+
   btn.disabled = false; btn.textContent = 'Save habits →';
 
   if (error) { showToast('Error saving. Try again.'); return; }
 
-  // Update local state and today's checklist labels
+  // Update local state and today's checklist labels immediately
   userHabits = { ...userHabits, ...updates };
   for (let i = 1; i <= 5; i++) {
     const label = document.getElementById('habit-label-' + i);
