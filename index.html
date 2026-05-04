@@ -900,7 +900,8 @@ async function handleSignup() {
       total_days_logged: 0,
       started_on: todayStr,
     });
-    // Create default habits
+    // Delete any stale habits row then insert fresh defaults
+    await sb.from('habits').delete().eq('user_id', data.user.id);
     await sb.from('habits').insert({
       user_id: data.user.id,
       habit_1: 'No phone first 30 minutes',
@@ -921,8 +922,13 @@ async function handleGoogle() {
 }
 
 async function handleSignOut() {
+  currentUser = null;
+  userProfile = null;
+  userHabits = null;
+  todayLog = null;
+  archiveLogs = [];
+  showScreen('auth');
   await sb.auth.signOut();
-  showToast('Signed out.');
 }
 
 function toggleAvatarMenu() {
@@ -951,7 +957,8 @@ async function loadProfile() {
       started_on: todayStr,
     }).select().single();
     userProfile = newProfile;
-    // Also create default habits
+    // Delete any stale habits row then insert fresh defaults
+    await sb.from('habits').delete().eq('user_id', currentUser.id);
     await sb.from('habits').insert({
       user_id: currentUser.id,
       habit_1: 'No phone first 30 minutes',
