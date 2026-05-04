@@ -379,6 +379,38 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
 }
 .signout-btn:hover { background: var(--accent-light); }
 
+/* ── NOTIFICATIONS ── */
+.notif-badge {
+  font-size: 10px; font-weight: 600; padding: 3px 8px;
+  border-radius: 10px; letter-spacing: 0.05em;
+}
+.notif-off { background: var(--surface-2); color: var(--text-3); }
+.notif-on  { background: var(--green-light); color: var(--green); }
+
+.notif-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 0; border-bottom: 1px solid var(--border); gap: 12px;
+}
+.notif-row-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+.notif-row-icon { font-size: 20px; flex-shrink: 0; }
+.notif-row-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+.notif-row-sub { font-size: 11px; color: var(--text-3); }
+
+.notif-time-input {
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 7px 10px; font-family: var(--mono); font-size: 13px;
+  color: var(--text); background: var(--surface-2); outline: none;
+  width: 96px; flex-shrink: 0; transition: border-color 0.2s;
+}
+.notif-time-input:focus { border-color: var(--accent); background: var(--surface); }
+
+.disable-notif-btn {
+  width: 100%; padding: 12px; background: transparent; color: var(--text-3);
+  border: none; font-family: var(--sans); font-size: 13px;
+  cursor: pointer; margin-top: 4px; transition: color 0.2s;
+}
+.disable-notif-btn:hover { color: var(--accent); }
+
 /* ── MODAL ── */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); z-index: 200; align-items: flex-end; justify-content: center; }
 .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
@@ -657,6 +689,39 @@ html, body { height: 100%; background: var(--bg); font-family: var(--sans); colo
           </div>
         </div>
         <button class="save-habits-btn" id="save-habits-btn" onclick="saveHabits()">Save habits →</button>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">Daily Reminders</div>
+          <div id="notif-status-badge" class="notif-badge notif-off">Off</div>
+        </div>
+        <p class="settings-note">Get reminded to open your log in the morning and mark your day in the evening.</p>
+
+        <div class="notif-row">
+          <div class="notif-row-left">
+            <div class="notif-row-icon">🌅</div>
+            <div>
+              <div class="notif-row-title">Morning — Open your log</div>
+              <div class="notif-row-sub">Reminder to fill in today's priorities</div>
+            </div>
+          </div>
+          <input type="time" class="notif-time-input" id="notif-morning" value="07:00">
+        </div>
+
+        <div class="notif-row" style="border-bottom:none">
+          <div class="notif-row-left">
+            <div class="notif-row-icon">🌙</div>
+            <div>
+              <div class="notif-row-title">Evening — Mark showed up</div>
+              <div class="notif-row-sub">Reminder to close out the day</div>
+            </div>
+          </div>
+          <input type="time" class="notif-time-input" id="notif-evening" value="21:00">
+        </div>
+
+        <button class="save-habits-btn" id="enable-notif-btn" onclick="enableNotifications()">Enable reminders →</button>
+        <button class="disable-notif-btn" id="disable-notif-btn" onclick="disableNotifications()" style="display:none">Turn off reminders</button>
       </div>
 
       <div class="section-card">
@@ -1162,7 +1227,123 @@ function renderArchive() {
   }).join('');
 }
 
-// ── VIEWS ─────────────────────────────────────────
+// ── NOTIFICATIONS ──────────────────────────────────
+const NOTIF_KEY = 'cwa_notifications';
+
+function getNotifSettings() {
+  try { return JSON.parse(localStorage.getItem(NOTIF_KEY)) || null; }
+  catch { return null; }
+}
+
+function saveNotifSettings(settings) {
+  localStorage.setItem(NOTIF_KEY, JSON.stringify(settings));
+}
+
+function renderNotifSettings() {
+  const settings = getNotifSettings();
+  const badge = document.getElementById('notif-status-badge');
+  const enableBtn = document.getElementById('enable-notif-btn');
+  const disableBtn = document.getElementById('disable-notif-btn');
+
+  if (settings && settings.enabled) {
+    badge.textContent = 'On';
+    badge.className = 'notif-badge notif-on';
+    document.getElementById('notif-morning').value = settings.morning || '07:00';
+    document.getElementById('notif-evening').value = settings.evening || '21:00';
+    enableBtn.style.display = 'none';
+    disableBtn.style.display = 'block';
+  } else {
+    badge.textContent = 'Off';
+    badge.className = 'notif-badge notif-off';
+    enableBtn.style.display = 'block';
+    disableBtn.style.display = 'none';
+  }
+}
+
+async function enableNotifications() {
+  if (!('Notification' in window)) {
+    showToast('Your browser doesn\'t support notifications.');
+    return;
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== 'granted') {
+    showToast('Permission denied. Enable in browser settings.');
+    return;
+  }
+
+  const morning = document.getElementById('notif-morning').value || '07:00';
+  const evening = document.getElementById('notif-evening').value || '21:00';
+
+  const settings = { enabled: true, morning, evening };
+  saveNotifSettings(settings);
+  scheduleNotifications(settings);
+  renderNotifSettings();
+  showToast('✓ Reminders enabled.');
+}
+
+function disableNotifications() {
+  saveNotifSettings({ enabled: false });
+  // Clear scheduled timeouts
+  if (window._notifTimeouts) {
+    window._notifTimeouts.forEach(t => clearTimeout(t));
+    window._notifTimeouts = [];
+  }
+  renderNotifSettings();
+  showToast('Reminders turned off.');
+}
+
+function scheduleNotifications(settings) {
+  if (window._notifTimeouts) {
+    window._notifTimeouts.forEach(t => clearTimeout(t));
+  }
+  window._notifTimeouts = [];
+
+  function msUntil(timeStr) {
+    const [h, m] = timeStr.split(':').map(Number);
+    const now = new Date();
+    const target = new Date();
+    target.setHours(h, m, 0, 0);
+    if (target <= now) target.setDate(target.getDate() + 1);
+    return target - now;
+  }
+
+  function scheduleOne(timeStr, title, body) {
+    const ms = msUntil(timeStr);
+    const t = setTimeout(() => {
+      if (Notification.permission === 'granted') {
+        new Notification(title, {
+          body,
+          icon: '/favicon.ico',
+          badge: '/favicon.ico',
+          tag: title,
+        });
+      }
+      // Reschedule for next day
+      scheduleOne(timeStr, title, body);
+    }, ms);
+    window._notifTimeouts.push(t);
+  }
+
+  scheduleOne(
+    settings.morning,
+    'The Daily Log',
+    'Open your log. Day starts now.'
+  );
+  scheduleOne(
+    settings.evening,
+    'The Daily Log',
+    'Did you show up today? Mark it.'
+  );
+}
+
+// Init notifications on app load
+function initNotifications() {
+  const settings = getNotifSettings();
+  if (settings && settings.enabled && Notification.permission === 'granted') {
+    scheduleNotifications(settings);
+  }
+}
 function switchView(view) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
