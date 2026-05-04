@@ -927,6 +927,11 @@ async function handleSignOut() {
   userHabits = null;
   todayLog = null;
   archiveLogs = [];
+  // Clear habit edit inputs so they don't bleed into next account
+  for (let i = 1; i <= 5; i++) {
+    const el = document.getElementById('edit-habit-' + i);
+    if (el) el.value = '';
+  }
   showScreen('auth');
   await sb.auth.signOut();
 }
@@ -1372,11 +1377,11 @@ function switchView(view) {
 
 // ── SETTINGS ──────────────────────────────────────
 function renderSettings() {
-  // Only populate habit inputs if they're empty — don't overwrite user edits
+  // Always reload habit inputs from current user's data
   if (userHabits) {
     for (let i = 1; i <= 5; i++) {
       const el = document.getElementById('edit-habit-' + i);
-      if (el && !el.value) el.value = userHabits['habit_' + i] || '';
+      if (el) el.value = userHabits['habit_' + i] || '';
     }
   }
   if (userProfile) {
